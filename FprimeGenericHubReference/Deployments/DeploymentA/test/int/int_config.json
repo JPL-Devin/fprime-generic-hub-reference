@@ -1,0 +1,4 @@
+{
+    "Svc.CommandDispatcher": "CdhCore.cmdDisp",
+    "Svc.EventManager": "CdhCore.events"
+}
