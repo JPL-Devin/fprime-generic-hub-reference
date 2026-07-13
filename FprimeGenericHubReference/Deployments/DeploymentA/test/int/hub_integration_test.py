@@ -6,6 +6,9 @@ import pytest
 
 
 COMMAND = "FprimeGenericHubReference.DeploymentA.a_comp.HubMessageTest"
+COMMAND_TEST = (
+    "FprimeGenericHubReference.DeploymentA.c_comp.HubCommandTest"
+)
 
 RETURN_EVENTS = {
     0: ("SerDataVerif",),
@@ -42,3 +45,8 @@ def test_hub_message_round_trip(fprime_test_api, message_type):
         fprime_test_api.assert_event_count(
             0, event_name(event), start=start, timeout=0
         )
+
+
+def test_hub_command_round_trip(fprime_test_api):
+    """Send the hub command through the DeploymentA GDS connection."""
+    fprime_test_api.send_command(COMMAND_TEST)
