@@ -52,40 +52,38 @@ def test_hub_command_round_trip(fprime_test_api):
     fprime_test_api.send_command(COMMAND_TEST)
 
 
-def test_hub_no_allocation_failures(fprime_test_api):
-    """The hub reports its allocation-failure counter and has not dropped any message."""
-    start = fprime_test_api.get_event_test_history().size()
+def send_burst(fprime_test_api):
+    """Send every hub message kind, wait for the round trips; return the event/telemetry history sizes at send time."""
+    evt_start = fprime_test_api.get_event_test_history().size()
+    tlm_start = fprime_test_api.get_telemetry_test_history().size()
     fprime_test_api.send_command(COMMAND, [6])
     for event in RETURN_EVENTS[6]:
-        fprime_test_api.assert_event(event_name(event), start=start, timeout=30)
+        fprime_test_api.assert_event(event_name(event), start=evt_start, timeout=30)
+    return evt_start, tlm_start
 
+
+def test_hub_no_allocation_failures(fprime_test_api):
+    """The hub reports its allocation-failure counter and has not dropped any message."""
+    evt_start, tlm_start = send_burst(fprime_test_api)
     fprime_test_api.assert_telemetry(
         "FprimeGenericHubReference.DeploymentA.a_hub.NumAllocationFailures",
         value=0,
+        start=tlm_start,
         timeout=10,
     )
     fprime_test_api.assert_event_count(
         0,
         "FprimeGenericHubReference.DeploymentA.a_hub.BufferAllocationFailed",
-        start=start,
+        start=evt_start,
         timeout=0,
     )
 
 
 def test_hub_queue_telemetry(fprime_test_api):
-    """The hub's ComQueue reports its depth after a burst and has dropped nothing."""
-    start = fprime_test_api.get_event_test_history().size()
-    fprime_test_api.send_command(COMMAND, [6])
-    for event in RETURN_EVENTS[6]:
-        fprime_test_api.assert_event(event_name(event), start=start, timeout=30)
-
+    """The hub's ComQueue reports its depth after a burst and has not overflowed."""
+    evt_start, tlm_start = send_burst(fprime_test_api)
     queue = "FprimeGenericHubReference.DeploymentA.a_hubComQueue"
-    fprime_test_api.assert_telemetry(f"{queue}.buffQueueDepth", timeout=10)
-    fprime_test_api.assert_telemetry(
-        "FprimeGenericHubReference.DeploymentA.a_hub.NumAllocationFailures",
-        value=0,
-        timeout=10,
-    )
+    fprime_test_api.assert_telemetry(f"{queue}.buffQueueDepth", start=tlm_start, timeout=10)
     fprime_test_api.assert_event_count(
-        0, f"{queue}.QueueOverflow", start=start, timeout=0
+        0, f"{queue}.QueueOverflow", start=evt_start, timeout=0
     )
