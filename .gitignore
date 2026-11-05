@@ -14,3 +14,7 @@ build-fprime-*
 /.vscode/
 .DS_Store
 *.gcov
+
+# Python caches
+__pycache__/
+.pytest_cache/
