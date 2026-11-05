@@ -52,7 +52,10 @@ enum TopologyConstants {
     // bufferManager constants
     COM_DRIVER_BUFFER_SIZE = 3000,
     COM_DRIVER_BUFFER_COUNT = 30,
-    BUFFER_MANAGER_ID = 200
+    BUFFER_MANAGER_ID = 200,
+    HUB_COM_DRIVER_BUFFER_MANAGER_ID = 201,
+    // Hub ComQueue depth: at least the hub buffer count, so the hub stays the only drop point
+    HUB_QUEUE_DEPTH = COM_DRIVER_BUFFER_COUNT
 };
 
 /**
@@ -71,6 +74,12 @@ void configureTopology() {
     buffMgrBins_1.bins[0].bufferSize = COM_DRIVER_BUFFER_SIZE;
     buffMgrBins_1.bins[0].numBuffers = COM_DRIVER_BUFFER_COUNT;
     a_hubBufferManager.setup(BUFFER_MANAGER_ID, 0, mallocator_1, buffMgrBins_1);
+    a_hubComDriverBufferManager.setup(HUB_COM_DRIVER_BUFFER_MANAGER_ID, 0, mallocator_1, buffMgrBins_1);
+
+    // Hub ComQueue: only the buffer queue (hub frames) is used; the Fw::Com ports stay disabled (depth 0)
+    configurationTable.entries[Svc::ComQueue::COM_PORT_COUNT].depth = HUB_QUEUE_DEPTH;
+    configurationTable.entries[Svc::ComQueue::COM_PORT_COUNT].priority = 0;
+    a_hubComQueue.configure(configurationTable, 0, mallocator_1);
 
     // Rate group driver needs a divisor list
     a_rateGroupDriver.configure(rateGroupDivisorsSet);
@@ -152,7 +161,9 @@ void teardownTopology(const TopologyState& state) {
     a_cmdSeq.deallocateBuffer(mallocator_1);
 
     tearDownComponents(state);
+    a_hubComQueue.cleanup();
     a_hubBufferManager.cleanup();
+    a_hubComDriverBufferManager.cleanup();
 }
 };  // namespace DeploymentA
 }

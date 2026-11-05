@@ -90,44 +90,44 @@ void ComponentA ::send_event(U32 count) {
 
 void ComponentA ::HubMessageTest_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 hubMsgType) {
 
-    Svc::GenericHub::HubType hubType =  static_cast<Svc::GenericHub::HubType>(hubMsgType); 
    
     ++this->m_ghCounter;
 
     //Event Out for this deployment (DeploymentA)
     this->log_ACTIVITY_LO_HubTest(this->m_ghCounter); 
 
-    switch (hubType) {
+    // Values of Svc::GenericHub_HubType select one message kind; NUM_CONSTANTS sends all of them
+    switch (hubMsgType) {
 
     /* Test Serial ports -- serialIn/serialOut  */
-    case Svc::GenericHub::HUB_TYPE_PORT:
+    case Svc::GenericHub_HubType::HUB_TYPE_PORT:
         this->send_serialData(); 
         break;
 
      /* Test Buffer ports -- bufferIn/bufferOut */
-    case Svc::GenericHub::HUB_TYPE_BUFFER:
+    case Svc::GenericHub_HubType::HUB_TYPE_BUFFER:
         this->send_buffer(); 
         break;
 
     /* Test Event (EVRs) ports -- EventIn/EventOut */
-    case Svc::GenericHub::HUB_TYPE_EVENT:
+    case Svc::GenericHub_HubType::HUB_TYPE_EVENT:
         this->send_event(this->m_ghCounter);
         break;
 
     /* Test telemetery (channels) ports -- TlmIn/TlmOut */
-    case Svc::GenericHub::HUB_TYPE_CHANNEL:
+    case Svc::GenericHub_HubType::HUB_TYPE_CHANNEL:
         this->send_tlm(this->m_ghCounter);
         break; 
 
-    case Svc::GenericHub::HUB_TYPE_MAX:
+    case Svc::GenericHub_HubType::NUM_CONSTANTS:
         this->send_serialData();
         this->send_buffer();
         this->send_tlm(this->m_ghCounter);
         this->send_event(this->m_ghCounter);
         break;
 
-    case Svc::GenericHub::HUB_TYPE_CMD_DISP:
-    case Svc::GenericHub::HUB_TYPE_CMD_RESP:
+    case Svc::GenericHub_HubType::HUB_TYPE_CMD_DISP:
+    case Svc::GenericHub_HubType::HUB_TYPE_CMD_RESP:
         //do nothing
         break;
     }

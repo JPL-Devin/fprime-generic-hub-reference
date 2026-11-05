@@ -8,6 +8,8 @@ module DeploymentA {
   module Default {
     constant QUEUE_SIZE = 10
     constant STACK_SIZE = 64 * 1024
+    @ Hub ComQueue instance queue: hub buffer count (30) + 8 in-flight status/command/rate-group messages
+    constant HUB_QUEUE_SIZE = 40
   }
 
   # ----------------------------------------------------------------------
@@ -101,6 +103,17 @@ module DeploymentA {
   instance a_hubComDriver: Drv.Udp base id 0x10017100
 
   instance a_hubByteStreamAdapter: Drv.ByteStreamBufferAdapter base id 0x10017200
+
+  @ Queues the hub's outgoing buffers off the producers' threads (recommended hub wiring)
+  instance a_hubComQueue: Svc.ComQueue base id 0x10017300 \
+    queue size Default.HUB_QUEUE_SIZE \
+    stack size Default.STACK_SIZE \
+    priority 100
+
+  instance a_hubComStub: Svc.ComStub base id 0x10017400
+
+  @ Receive-side pool of the hub driver, kept separate from the hub's own pool
+  instance a_hubComDriverBufferManager: Svc.BufferManager base id 0x10015C00
 
 }
 }

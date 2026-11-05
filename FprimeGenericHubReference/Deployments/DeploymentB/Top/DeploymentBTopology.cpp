@@ -49,7 +49,10 @@ enum TopologyConstants {
     // bufferManager constants
     COM_DRIVER_BUFFER_SIZE = 3000,
     COM_DRIVER_BUFFER_COUNT = 30,
-    BUFFER_MANAGER_ID = 200
+    BUFFER_MANAGER_ID = 200,
+    HUB_COM_DRIVER_BUFFER_MANAGER_ID = 201,
+    // Hub ComQueue depth: at least the hub buffer count, so the hub stays the only drop point
+    HUB_QUEUE_DEPTH = COM_DRIVER_BUFFER_COUNT
 };
 
 // Hub Constants
@@ -74,6 +77,7 @@ void configureTopology() {
     upBuffMgrBins.bins[0].numBuffers = COM_DRIVER_BUFFER_COUNT;
 
     b_bufferManager.setup(BUFFER_MANAGER_ID, 0, mallocator, upBuffMgrBins);
+    b_hubComDriverBufferManager.setup(HUB_COM_DRIVER_BUFFER_MANAGER_ID, 0, mallocator, upBuffMgrBins);
 
     // Rate group driver needs a divisor list
     b_rateGroupDriver.configure(rateGroupDivisorsSet);
@@ -83,14 +87,10 @@ void configureTopology() {
     b_rateGroup2.configure(rateGroup2Context, FW_NUM_ARRAY_ELEMENTS(rateGroup2Context));
     b_rateGroup3.configure(rateGroup3Context, FW_NUM_ARRAY_ELEMENTS(rateGroup3Context));
 
-    // Events (highest-priority)
-    configurationTable.entries[0] = {.depth = 100, .priority = 0};
-    // Telemetry
-    configurationTable.entries[1] = {.depth = 500, .priority = 2};
-    // File Downlink
-    configurationTable.entries[2] = {.depth = 100, .priority = 1};
-    // Allocation identifier is 0 as the MallocAllocator discards it
-    //b_comQueue.configure(configurationTable, 0, mallocator);
+    // Hub ComQueue: only the buffer queue (hub frames) is used; the Fw::Com ports stay disabled (depth 0)
+    configurationTable.entries[Svc::ComQueue::COM_PORT_COUNT].depth = HUB_QUEUE_DEPTH;
+    configurationTable.entries[Svc::ComQueue::COM_PORT_COUNT].priority = 0;
+    b_hubComQueue.configure(configurationTable, 0, mallocator);
 }
 
 namespace DeploymentB {
@@ -156,7 +156,9 @@ void teardownTopology(const TopologyState& state) {
     
     // Resource deallocation
     b_cmdSeq.deallocateBuffer(mallocator);
+    b_hubComQueue.cleanup();
     b_bufferManager.cleanup();
+    b_hubComDriverBufferManager.cleanup();
 }
 };  // namespace DeploymentB
 }

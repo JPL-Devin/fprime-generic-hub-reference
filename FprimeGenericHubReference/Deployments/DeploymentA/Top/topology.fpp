@@ -37,7 +37,9 @@ module DeploymentA {
       instance a_hubComDriver
       instance a_hubByteStreamAdapter
       instance a_hubBufferManager
-      #instance a_hubComDriverBufferManager
+      instance a_hubComDriverBufferManager
+      instance a_hubComQueue
+      instance a_hubComStub
       instance a_comp
       instance c_comp
 
@@ -102,6 +104,7 @@ module DeploymentA {
       a_rateGroup1.RateGroupMemberOut[2] -> systemResources.run
       a_rateGroup1.RateGroupMemberOut[3] -> ComCcsds.comQueue.run
       a_rateGroup1.RateGroupMemberOut[4] -> ComCcsds.aggregator.timeout
+      a_rateGroup1.RateGroupMemberOut[5] -> a_hubComQueue.run
 
       # Rate group 2
       a_rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup2] -> a_rateGroup2.CycleIn
@@ -113,8 +116,9 @@ module DeploymentA {
       a_rateGroup3.RateGroupMemberOut[1] -> ComCcsds.commsBufferManager.schedIn
       a_rateGroup3.RateGroupMemberOut[2] -> DataProducts.dpBufferManager.schedIn
       a_rateGroup3.RateGroupMemberOut[3] -> DataProducts.dpWriter.schedIn
-      #a_rateGroup3.RateGroupMemberOut[4] -> a_hubComDriverBufferManager.schedIn
+      a_rateGroup3.RateGroupMemberOut[4] -> a_hubComDriverBufferManager.schedIn
       a_rateGroup3.RateGroupMemberOut[5] -> a_hubBufferManager.schedIn
+      a_rateGroup3.RateGroupMemberOut[6] -> a_hub.schedIn
     }
 
     connections send_hub {
@@ -142,18 +146,23 @@ module DeploymentA {
     }
 
     connections hub {
-      a_hub.toBufferDriver -> a_hubByteStreamAdapter.bufferIn
-      a_hubByteStreamAdapter.bufferInReturn -> a_hub.toBufferDriverReturn
-    
-      a_hubByteStreamAdapter.toByteStreamDriver -> a_hubComDriver.$send
+      # Send path: hub -> ComQueue -> ComStub -> driver (recommended hub wiring, see Svc/GenericHub/docs/sdd.md)
+      a_hub.toBufferDriver             -> a_hubComQueue.bufferQueueIn[0]
+      a_hubComQueue.bufferReturnOut[0] -> a_hub.toBufferDriverReturn
+      a_hubComQueue.dataOut            -> a_hubComStub.dataIn
+      a_hubComStub.dataReturnOut       -> a_hubComQueue.dataReturnIn
+      a_hubComStub.comStatusOut        -> a_hubComQueue.comStatusIn
+      a_hubComStub.drvSendOut          -> a_hubComDriver.$send
+      a_hubComDriver.ready             -> a_hubComStub.drvConnected
+
+      # Receive path keeps the byte-stream adapter (see recv_hub)
       a_hubByteStreamAdapter.fromByteStreamDriverReturn -> a_hubComDriver.recvReturnIn
 
+      # Separate pools: the hub sends from a_hubBufferManager, the driver receives into a_hubComDriverBufferManager
       a_hub.allocate   -> a_hubBufferManager.bufferGetCallee
       a_hub.deallocate -> a_hubBufferManager.bufferSendIn
-
-      a_hubComDriver.allocate   -> a_hubBufferManager.bufferGetCallee
-      a_hubComDriver.deallocate -> a_hubBufferManager.bufferSendIn
-      a_hubComDriver.ready      -> a_hubByteStreamAdapter.byteStreamDriverReady
+      a_hubComDriver.allocate   -> a_hubComDriverBufferManager.bufferGetCallee
+      a_hubComDriver.deallocate -> a_hubComDriverBufferManager.bufferSendIn
 
       a_cmdSplitter.RemoteCmd -> a_hub.cmdDispIn
       #a_hub.bufferOut[1] -> a_cmdSplitter.seqCmdStatus[1]

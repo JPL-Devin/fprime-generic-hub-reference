@@ -36,6 +36,9 @@ module FprimeGenericHubReference {
       instance b_hub
       instance b_hubComDriver
       instance b_hubByteStreamAdapter
+      instance b_hubComDriverBufferManager
+      instance b_hubComQueue
+      instance b_hubComStub
       instance b_bufferManager
       instance b_comp
       instance c_comp
@@ -83,6 +86,7 @@ module FprimeGenericHubReference {
       b_rateGroup1.RateGroupMemberOut[2] -> systemResources.run
       b_rateGroup1.RateGroupMemberOut[3] -> ComCcsds.comQueue.run
       b_rateGroup1.RateGroupMemberOut[4] -> ComCcsds.aggregator.timeout
+      b_rateGroup1.RateGroupMemberOut[5] -> b_hubComQueue.run
 
       # Rate group 2
       b_rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup2] -> b_rateGroup2.CycleIn
@@ -96,6 +100,8 @@ module FprimeGenericHubReference {
       b_rateGroup3.RateGroupMemberOut[3] -> DataProducts.dpWriter.schedIn
       b_rateGroup3.RateGroupMemberOut[4] -> DataProducts.dpMgr.schedIn
       b_rateGroup3.RateGroupMemberOut[5] -> b_bufferManager.schedIn
+      b_rateGroup3.RateGroupMemberOut[6] -> b_hub.schedIn
+      b_rateGroup3.RateGroupMemberOut[7] -> b_hubComDriverBufferManager.schedIn
     }
 
 
@@ -123,18 +129,23 @@ module FprimeGenericHubReference {
     }
 
     connections hub {
-      b_hub.toBufferDriver                  -> b_hubByteStreamAdapter.bufferIn
-      b_hubByteStreamAdapter.bufferInReturn -> b_hub.toBufferDriverReturn
-    
-      b_hubByteStreamAdapter.toByteStreamDriver         -> b_hubComDriver.$send
+      # Send path: hub -> ComQueue -> ComStub -> driver (recommended hub wiring, see Svc/GenericHub/docs/sdd.md)
+      b_hub.toBufferDriver             -> b_hubComQueue.bufferQueueIn[0]
+      b_hubComQueue.bufferReturnOut[0] -> b_hub.toBufferDriverReturn
+      b_hubComQueue.dataOut            -> b_hubComStub.dataIn
+      b_hubComStub.dataReturnOut       -> b_hubComQueue.dataReturnIn
+      b_hubComStub.comStatusOut        -> b_hubComQueue.comStatusIn
+      b_hubComStub.drvSendOut          -> b_hubComDriver.$send
+      b_hubComDriver.ready             -> b_hubComStub.drvConnected
+
+      # Receive path keeps the byte-stream adapter (see recv_hub)
       b_hubByteStreamAdapter.fromByteStreamDriverReturn -> b_hubComDriver.recvReturnIn
 
+      # Separate pools: the hub sends from b_bufferManager, the driver receives into b_hubComDriverBufferManager
       b_hub.allocate   -> b_bufferManager.bufferGetCallee
       b_hub.deallocate -> b_bufferManager.bufferSendIn
-
-      b_hubComDriver.allocate   -> b_bufferManager.bufferGetCallee
-      b_hubComDriver.deallocate -> b_bufferManager.bufferSendIn
-      b_hubComDriver.ready      -> b_hubByteStreamAdapter.byteStreamDriverReady
+      b_hubComDriver.allocate   -> b_hubComDriverBufferManager.bufferGetCallee
+      b_hubComDriver.deallocate -> b_hubComDriverBufferManager.bufferSendIn
 
       #b_hub.bufferInReturn -> b_comp.bufRet
       b_comp.bufInRet      -> b_hub.bufferOutReturn
