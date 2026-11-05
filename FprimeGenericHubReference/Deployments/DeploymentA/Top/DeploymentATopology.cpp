@@ -51,7 +51,7 @@ enum TopologyConstants {
     COMM_PRIORITY = 100,
     // bufferManager constants
     COM_DRIVER_BUFFER_SIZE = 3000,
-    COM_DRIVER_BUFFER_COUNT = 30,
+    COM_DRIVER_BUFFER_COUNT = Default::HUB_BUFFER_COUNT,
     BUFFER_MANAGER_ID = 200,
     HUB_COM_DRIVER_BUFFER_MANAGER_ID = 201,
     // Hub ComQueue depth: at least the hub buffer count, so the hub stays the only drop point

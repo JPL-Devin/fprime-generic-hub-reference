@@ -8,8 +8,10 @@ module DeploymentA {
   module Default {
     constant QUEUE_SIZE = 10
     constant STACK_SIZE = 64 * 1024
-    @ Hub ComQueue instance queue: hub buffer count (30) + 8 in-flight status/command/rate-group messages
-    constant HUB_QUEUE_SIZE = 40
+    @ Hub send pool size (buffers); also the hub ComQueue depth
+    constant HUB_BUFFER_COUNT = 30
+    @ Hub ComQueue instance queue: the pool's buffers + 8 in-flight status/command/rate-group messages
+    constant HUB_QUEUE_SIZE = HUB_BUFFER_COUNT + 8
   }
 
   # ----------------------------------------------------------------------

@@ -130,6 +130,9 @@ void ComponentA ::HubMessageTest_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32
     case Svc::GenericHub_HubType::HUB_TYPE_CMD_RESP:
         //do nothing
         break;
+    default:
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
     }
 
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
