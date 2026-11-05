@@ -56,6 +56,15 @@ ${FPRIME_GEN_HUB_DEPL_B}/bin/FprimeGenericHubReference_Deployments_DeploymentB -
 ## 10. Generic Hub Reference Deployment Connections 
 ![Top Level](./img/hub_connections.svg)
 
+Hub wiring: each hub sends through `Svc.ComQueue` and `Svc.ComStub` to `Drv.Udp`
+(`hub.toBufferDriver -> *_hubComQueue.bufferQueueIn[0] -> *_hubComStub -> *_hubComDriver`), the recommended
+formation from the [GenericHub SDD](https://github.com/nasa/fprime/blob/devel/Svc/GenericHub/docs/sdd.md#transport-formations);
+the receive side keeps the `Drv.ByteStreamBufferAdapter`. The hub send pool (`*_hubBufferManager`, 30 buffers) is
+separate from the driver receive pool (`*_hubComDriverBufferManager`); the queue depth is 30 and the instance
+queue 40. Channels to watch: `a_hub.NumAllocationFailures` (drops at the hub) and `a_hubComQueue.buffQueueDepth`.
+The link is UDP, so a failed send stalls the queued path until the driver reconnects; this reference accepts
+that limitation.
+
 ## 10. Send the following command from deployment A 
 Each of these command (depending on the argument) sends a message from Deployment-A/Component-A to Deployment-B/Component-B    
 Deployment-B/Component-B sends the just received message back to Deployment-A/Component-A  
